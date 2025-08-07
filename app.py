@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify
 import os
 import logging
 from predefined_responses import predefined_manager
+from linkedin_profile_analyzer import linkedin_analyzer
 
 app = Flask(__name__)
 
@@ -92,6 +93,45 @@ def upload_cv():
         'analysis': analysis_result,
         'status': 'success'
     })
+
+@app.route('/api/connect-linkedin', methods=['POST'])
+def connect_linkedin():
+    """API endpoint for LinkedIn profile connection"""
+    data = request.get_json()
+    linkedin_url = data.get('linkedin_url', '')
+    
+    if not linkedin_url:
+        app.logger.warning('LinkedIn connection attempted without URL')
+        return jsonify({'error': 'No LinkedIn URL provided'}), 400
+    
+    app.logger.info(f'LinkedIn profile connection requested: {linkedin_url}')
+    
+    try:
+        # Analyze the LinkedIn profile
+        profile_data = linkedin_analyzer.analyze_profile(linkedin_url)
+        
+        if not profile_data:
+            return jsonify({'error': 'Could not analyze LinkedIn profile'}), 400
+        
+        # Update user preferences based on profile
+        updated_preferences = linkedin_analyzer.update_user_preferences(profile_data)
+        
+        # Get personalized suggestions
+        suggestions = linkedin_analyzer.get_personalized_suggestions(profile_data)
+        
+        app.logger.info(f'LinkedIn profile connected successfully: {profile_data.get("name", "Unknown")}')
+        
+        return jsonify({
+            'message': f'LinkedIn profile connected successfully!',
+            'profile_data': profile_data,
+            'updated_preferences': updated_preferences,
+            'suggestions': suggestions,
+            'status': 'success'
+        })
+        
+    except Exception as e:
+        app.logger.error(f'Error connecting LinkedIn profile: {e}')
+        return jsonify({'error': 'Error connecting LinkedIn profile'}), 500
 
 def generate_chat_response(user_message):
     """Generate chat responses based on user input"""
@@ -298,8 +338,8 @@ def generate_recommendations(career_level, interests, goal):
             'type': 'JOB',
             'link': 'https://www.linkedin.com/jobs/search/?keywords=senior%20tech%20lead%20remote'
         })
-        
-        recommendations['events'].append({
+    
+    recommendations['events'].append({
             'title': 'LinkedIn Tech Leadership Summit 2025',
             'description': 'Virtual conference with industry leaders and networking opportunities',
             'date': 'Dec 15, 2025',
@@ -309,15 +349,15 @@ def generate_recommendations(career_level, interests, goal):
             'link': 'https://www.linkedin.com/events/tech-leadership-summit-2025'
         })
         
-        recommendations['workshops'].append({
+    recommendations['workshops'].append({
             'title': 'LinkedIn Learning: Strategic Thinking Workshop',
-            'description': 'Develop strategic thinking skills for executive roles',
+        'description': 'Develop strategic thinking skills for executive roles',
             'duration': '6 hours',
             'price': 'Free with LinkedIn Premium',
             'spots': 'Unlimited',
             'type': 'WORKSHOP',
             'link': 'https://www.linkedin.com/learning/courses/strategic-thinking-for-leaders'
-        })
+    })
     
     return recommendations
 

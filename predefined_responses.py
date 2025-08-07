@@ -101,12 +101,21 @@ class PredefinedResponseManager:
         location = user_preferences.get('location', 'Remote')
         experience = user_preferences.get('experience', '3-5 years')
         
+        # Check if LinkedIn is connected for personalized responses
+        linkedin_connected = user_preferences.get('linkedin_connected', False)
+        profile_data = user_preferences.get('profile_data', {})
+        
         # Personalize based on user's interests and preferences
         tech_focus = 'Technology' in interests
         leadership_focus = 'Leadership' in interests
         remote_preference = location == 'Remote'
         advancement_goal = goal == 'advancement'
         
+        # Use LinkedIn-specific responses if connected
+        if linkedin_connected and profile_data:
+            return self._get_linkedin_personalized_response(question_type, user_preferences, profile_data)
+        
+        # Use default responses if LinkedIn not connected
         if question_type == 'advancement':
             return self._get_advancement_response(tech_focus, leadership_focus, remote_preference, experience)
         elif question_type == 'director_skills':
@@ -357,16 +366,42 @@ I've updated your "Recommended for You" section with leadership workshops and Li
     def should_use_predefined_response(self, user_message: str, user_preferences: Dict) -> Tuple[bool, Optional[str]]:
         """Determine if predefined response should be used"""
         
-        # Only use predefined responses for the exact four main questions with default preferences
-        # This ensures LLM is used for all other questions and when preferences are changed
-        
-        # Check if user has default preferences
-        if not self.is_default_preferences(user_preferences):
-            return False, None
-        
         # Check if message matches predefined questions exactly
         question_type = self.match_question(user_message)
-        if question_type:
+        if not question_type:
+            return False, None
+        
+        # For LinkedIn-connected users, always use predefined responses for the four main questions
+        linkedin_connected = user_preferences.get('linkedin_connected', False)
+        if linkedin_connected:
+            return True, question_type
+        
+        # For non-LinkedIn users, only use predefined responses if they have default preferences
+        # Check if all key preferences match defaults
+        default_interests = ['Technology', 'Leadership']
+        default_career_level = 'Entry Level'
+        default_goal = 'advancement'
+        default_industry = 'All Industries'
+        default_location = 'Remote'
+        default_experience = '3-5 years'
+        
+        user_interests = user_preferences.get('interests', [])
+        # Handle both career_level and careerLevel (frontend vs backend)
+        user_career_level = user_preferences.get('career_level', user_preferences.get('careerLevel', ''))
+        user_goal = user_preferences.get('goal', '')
+        user_industry = user_preferences.get('industry', '')
+        user_location = user_preferences.get('location', '')
+        user_experience = user_preferences.get('experience', '')
+        
+        # Check if all preferences match defaults
+        interests_match = set(user_interests) == set(default_interests)
+        career_match = user_career_level == default_career_level
+        goal_match = user_goal == default_goal
+        industry_match = user_industry == default_industry
+        location_match = user_location == default_location
+        experience_match = user_experience == default_experience
+        
+        if interests_match and career_match and goal_match and industry_match and location_match and experience_match:
             return True, question_type
         
         return False, None
@@ -399,6 +434,260 @@ You can:
 • Find leadership workshops and events
 
 What specific aspect would you like to dive deeper into? I'm here to provide personalized guidance based on your career goals! 🚀"""
+
+    def _get_linkedin_personalized_response(self, question_type: str, user_preferences: Dict, profile_data: Dict) -> str:
+        """Generate LinkedIn-specific personalized responses"""
+        
+        name = profile_data.get('name', 'User')
+        title = profile_data.get('title', 'Professional')
+        company = profile_data.get('company', 'Company')
+        skills = profile_data.get('skills', [])
+        experience_level = profile_data.get('experience_level', 'Entry Level')
+        industry = profile_data.get('industry', 'Technology')
+        
+        if question_type == 'advancement':
+            return self._get_linkedin_advancement_response(name, title, company, skills, experience_level, industry)
+        elif question_type == 'director_skills':
+            return self._get_linkedin_director_response(name, title, company, skills, experience_level, industry)
+        elif question_type == 'remote_jobs':
+            return self._get_linkedin_jobs_response(name, title, company, skills, experience_level, industry)
+        elif question_type == 'leadership_workshops':
+            return self._get_linkedin_workshops_response(name, title, company, skills, experience_level, industry)
+        
+        return f"Hi {name}! Based on your profile as a {title} at {company}, I'd be happy to help you with career guidance."
+
+    def _get_linkedin_advancement_response(self, name: str, title: str, company: str, skills: list, experience_level: str, industry: str) -> str:
+        """LinkedIn-specific advancement response"""
+        
+        return f"""Perfect, {name}! 🎯
+
+Based on your profile as a <strong>{title}</strong> at <strong>{company}</strong>, I can see you're ready to advance your career in <strong>{industry}</strong>!
+
+<h3>🚀 Your Personalized Advancement Path</h3>
+
+<h4>Current Position Analysis:</h4>
+• <strong>Role:</strong> {title}
+• <strong>Company:</strong> {company}
+• <strong>Experience Level:</strong> {experience_level}
+• <strong>Key Skills:</strong> {', '.join(skills[:3])}
+
+<h4>🎯 Advancement Strategy for You:</h4>
+
+<h4>1. Leverage Your Current Strengths</h4>
+Your expertise in <strong>{', '.join(skills[:2])}</strong> positions you well for advancement. Focus on:
+• <strong>Leadership opportunities</strong> within your current role
+• <strong>Cross-functional projects</strong> to expand your impact
+• <strong>Mentoring junior team members</strong> to demonstrate leadership
+
+<h4>2. Skill Development for {industry}</h4>
+Based on your background, consider developing:
+• <strong>Strategic thinking</strong> and business acumen
+• <strong>Project management</strong> skills
+• <strong>Executive communication</strong> abilities
+
+<h4>3. LinkedIn Strategy for Advancement</h4>
+• <strong>Update your LinkedIn profile</strong> to reflect leadership aspirations
+• <strong>Share industry insights</strong> and thought leadership content
+• <strong>Connect with {industry} leaders</strong> in your network
+• <strong>Join {industry} leadership groups</strong> on LinkedIn
+
+<h4>4. Next Steps for {name}</h4>
+1. <strong>Internal advancement:</strong> Express interest in leadership roles at {company}
+2. <strong>Skill building:</strong> Enroll in LinkedIn Learning courses for {industry} leadership
+3. <strong>Networking:</strong> Attend {industry} events and conferences
+4. <strong>External opportunities:</strong> Explore senior roles at other {industry} companies
+
+<h3>📊 Your Competitive Advantages</h3>
+Your combination of <strong>{', '.join(skills[:2])}</strong> and experience at <strong>{company}</strong> gives you a unique edge in the {industry} market!
+
+I've updated your "Recommended for You" section with specific advancement opportunities tailored to your profile. Check out the recommendations below! 🔗"""
+
+    def _get_linkedin_director_response(self, name: str, title: str, company: str, skills: list, experience_level: str, industry: str) -> str:
+        """LinkedIn-specific director skills response"""
+        
+        return f"""Excellent question, {name}! 🎯
+
+As a <strong>{title}</strong> at <strong>{company}</strong>, you're well-positioned to develop the skills needed for director-level roles in <strong>{industry}</strong>.
+
+<h3>🏆 Director Skills Development for {name}</h3>
+
+<h4>Your Current Foundation:</h4>
+• <strong>Role:</strong> {title}
+• <strong>Company:</strong> {company}
+• <strong>Industry:</strong> {industry}
+• <strong>Key Skills:</strong> {', '.join(skills[:3])}
+
+<h4>🎯 Director-Level Skills You Need:</h4>
+
+<h4>1. Strategic Leadership</h4>
+• <strong>Vision Setting:</strong> Define and communicate organizational direction
+• <strong>Strategic Planning:</strong> Align {industry} initiatives with business objectives
+• <strong>Change Management:</strong> Lead organizational transformation
+
+<h4>2. Executive Communication</h4>
+• <strong>Board Presentations:</strong> Present complex {industry} concepts to executives
+• <strong>Stakeholder Management:</strong> Work with C-suite and board members
+• <strong>External Representation:</strong> Represent your organization at {industry} events
+
+<h4>3. Business Acumen</h4>
+• <strong>P&L Management:</strong> Understand financial impact of {industry} decisions
+• <strong>Market Analysis:</strong> Stay ahead of {industry} trends
+• <strong>Competitive Intelligence:</strong> Monitor {industry} landscape
+
+<h4>4. Team Leadership</h4>
+• <strong>Cross-functional Leadership:</strong> Lead teams across departments
+• <strong>Talent Development:</strong> Build and develop high-performing teams
+• <strong>Culture Building:</strong> Foster innovation and collaboration
+
+<h4>🚀 LinkedIn Strategy for Director Development:</h4>
+• <strong>Follow {industry} directors</strong> and executives on LinkedIn
+• <strong>Join "Director" and "{industry} Leadership" groups</strong>
+• <strong>Share strategic insights</strong> about {industry} trends
+• <strong>Attend executive leadership events</strong> on LinkedIn
+
+<h4>📚 Recommended Development Path:</h4>
+1. <strong>Internal leadership:</strong> Take on director-level responsibilities at {company}
+2. <strong>Executive education:</strong> Consider MBA or executive programs
+3. <strong>Mentorship:</strong> Connect with current directors in {industry}
+4. <strong>Industry involvement:</strong> Join {industry} associations and boards
+
+<h3>💡 Your Unique Advantages</h3>
+Your experience at <strong>{company}</strong> and expertise in <strong>{', '.join(skills[:2])}</strong> positions you perfectly for director roles in {industry}!
+
+I've updated your recommendations with director-level opportunities and executive development resources. Check them out below! 🔗"""
+
+    def _get_linkedin_jobs_response(self, name: str, title: str, company: str, skills: list, experience_level: str, industry: str) -> str:
+        """LinkedIn-specific jobs response"""
+        
+        return f"""Fantastic, {name}! 🌐
+
+Based on your profile as a <strong>{title}</strong> at <strong>{company}</strong>, here are the best job opportunities for your background in <strong>{industry}</strong>:
+
+<h3>💼 Job Opportunities Perfect for {name}</h3>
+
+<h4>Your Profile Summary:</h4>
+• <strong>Current Role:</strong> {title}
+• <strong>Company:</strong> {company}
+• <strong>Experience Level:</strong> {experience_level}
+• <strong>Key Skills:</strong> {', '.join(skills[:3])}
+• <strong>Industry:</strong> {industry}
+
+<h4>🎯 Recommended Job Categories:</h4>
+
+<h4>1. Senior {industry} Roles</h4>
+• <strong>Senior {title}</strong> positions at larger {industry} companies
+• <strong>{industry} Team Lead</strong> roles for leadership experience
+• <strong>{industry} Specialist</strong> positions for skill development
+
+<h4>2. Leadership Opportunities</h4>
+• <strong>{industry} Manager</strong> roles to build leadership skills
+• <strong>Project Manager</strong> positions in {industry}
+• <strong>Technical Lead</strong> roles leveraging your {', '.join(skills[:2])} expertise
+
+<h4>3. Industry-Specific Roles</h4>
+• <strong>{industry} Consultant</strong> positions
+• <strong>{industry} Analyst</strong> roles
+• <strong>{industry} Coordinator</strong> positions
+
+<h4>🔍 LinkedIn Job Search Strategy:</h4>
+
+<h4>Search Terms to Use:</h4>
+• "Senior {title}"
+• "{industry} Manager"
+• "{', '.join(skills[:2])} {industry}"
+• "Team Lead {industry}"
+
+<h4>LinkedIn Features:</h4>
+• <strong>LinkedIn Jobs:</strong> Use filters for {industry} and {experience_level}
+• <strong>LinkedIn Recruiter:</strong> Connect with {industry} hiring managers
+• <strong>LinkedIn Groups:</strong> Join "{industry} Jobs" and "{industry} Professionals" groups
+• <strong>LinkedIn Events:</strong> Attend {industry} job fairs and networking events
+
+<h4>🎯 Companies to Target:</h4>
+• <strong>Larger {industry} companies</strong> for career growth
+• <strong>Startups in {industry}</strong> for rapid advancement
+• <strong>Consulting firms</strong> specializing in {industry}
+• <strong>Technology companies</strong> with {industry} divisions
+
+<h4>📊 Your Competitive Advantages</h4>
+Your experience at <strong>{company}</strong> and expertise in <strong>{', '.join(skills[:2])}</strong> makes you highly attractive to {industry} employers!
+
+<h4>🚀 Next Steps for {name}:</h4>
+1. <strong>Optimize your LinkedIn profile</strong> for {industry} job searches
+2. <strong>Set up job alerts</strong> for {industry} positions
+3. <strong>Network with {industry} professionals</strong> on LinkedIn
+4. <strong>Apply to recommended positions</strong> in your field
+
+I've updated your "Recommended for You" section with {industry} job opportunities tailored to your profile. Check out the recommendations below! 🔗"""
+
+    def _get_linkedin_workshops_response(self, name: str, title: str, company: str, skills: list, experience_level: str, industry: str) -> str:
+        """LinkedIn-specific workshops response"""
+        
+        return f"""Excellent choice, {name}! 🎓
+
+As a <strong>{title}</strong> at <strong>{company}</strong>, here are the best workshops and learning opportunities for your career in <strong>{industry}</strong>:
+
+<h3>🎓 Workshops Perfect for {name}</h3>
+
+<h4>Your Learning Profile:</h4>
+• <strong>Current Role:</strong> {title}
+• <strong>Company:</strong> {company}
+• <strong>Experience Level:</strong> {experience_level}
+• <strong>Key Skills:</strong> {', '.join(skills[:3])}
+• <strong>Industry:</strong> {industry}
+
+<h4>🎯 Recommended Workshop Categories:</h4>
+
+<h4>1. {industry} Leadership Workshops</h4>
+• <strong>LinkedIn Learning:</strong> "{industry} Leadership" course series
+• <strong>Industry conferences:</strong> {industry} leadership summits
+• <strong>Executive workshops:</strong> {industry} management training
+
+<h4>2. Skill Development Workshops</h4>
+• <strong>{', '.join(skills[:2])} advanced training</strong> workshops
+• <strong>Project management</strong> for {industry} professionals
+• <strong>Strategic thinking</strong> workshops for {industry}
+
+<h4>3. Industry-Specific Learning</h4>
+• <strong>{industry} trends</strong> and innovation workshops
+• <strong>{industry} best practices</strong> training sessions
+• <strong>{industry} technology</strong> workshops
+
+<h4>📅 Upcoming LinkedIn Events for {name}:</h4>
+
+<h4>Virtual Workshops:</h4>
+• <strong>{industry} Leadership Forum</strong> - Monthly virtual sessions
+• <strong>Executive Development Series</strong> - {industry} focused
+• <strong>Skill Building Workshops</strong> - {', '.join(skills[:2])} advanced training
+
+<h4>LinkedIn Learning Paths:</h4>
+• <strong>"Becoming a {industry} Leader"</strong> - Complete learning path
+• <strong>"{industry} Management"</strong> - Specialized course series
+• <strong>"Executive Communication"</strong> - Leadership communication skills
+
+<h4>🎯 Workshop Recommendations by Experience Level:</h4>
+
+<h4>For {experience_level} Professionals:</h4>
+• <strong>Leadership foundations</strong> workshops
+• <strong>{industry} skill development</strong> training
+• <strong>Career advancement</strong> workshops
+
+<h4>🚀 LinkedIn Learning Strategy for {name}:</h4>
+1. <strong>Complete LinkedIn Learning paths</strong> in {industry} leadership
+2. <strong>Join "{industry} Learning" groups</strong> on LinkedIn
+3. <strong>Attend LinkedIn Events</strong> and virtual {industry} conferences
+4. <strong>Connect with {industry} trainers</strong> and coaches
+
+<h4>💡 Your Learning Journey</h4>
+Your background at <strong>{company}</strong> and expertise in <strong>{', '.join(skills[:2])}</strong> gives you a strong foundation for advanced {industry} workshops!
+
+<h4>🎯 Immediate Actions for {name}:</h4>
+1. <strong>Enroll in LinkedIn Learning {industry} courses</strong>
+2. <strong>Register for upcoming {industry} workshops</strong>
+3. <strong>Join {industry}-focused LinkedIn groups</strong>
+4. <strong>Connect with {industry} learning mentors</strong>
+
+I've updated your "Recommended for You" section with {industry} workshops and LinkedIn Learning resources tailored to your profile. Check out the recommendations below! 🔗"""
 
 # Global instance for easy access
 predefined_manager = PredefinedResponseManager()

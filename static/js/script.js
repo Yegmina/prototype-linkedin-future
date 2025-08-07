@@ -597,6 +597,133 @@ function updateRecommendationsBasedOnFilters() {
     }
 }
 
+// LinkedIn Connection
+function connectLinkedIn() {
+    // Prompt user for LinkedIn URL
+    const linkedinUrl = prompt('Please enter your LinkedIn profile URL:', 'https://www.linkedin.com/in/');
+    
+    if (linkedinUrl && linkedinUrl.trim() !== '') {
+        connectLinkedInToBackend(linkedinUrl.trim());
+    }
+}
+
+function connectLinkedInToBackend(linkedinUrl) {
+    // Show loading message
+    addAssistantMessage('Connecting to your LinkedIn profile...', true);
+    
+    fetch('/api/connect-linkedin', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            linkedin_url: linkedinUrl
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Remove loading message
+            const messages = document.querySelectorAll('.message.assistant');
+            const lastMessage = messages[messages.length - 1];
+            if (lastMessage) {
+                lastMessage.remove();
+            }
+            
+            // Update user preferences
+            updateUserPreferencesFromLinkedIn(data.updated_preferences);
+            
+            // Show personalized welcome message
+            const welcomeMessage = `
+                <h3>🎉 LinkedIn Profile Connected!</h3>
+                <p><strong>${data.suggestions.welcome_message}</strong></p>
+                <p>${data.suggestions.profile_summary}</p>
+                
+                <h4>📊 Your Profile Analysis:</h4>
+                <ul>
+                    <li><strong>Name:</strong> ${data.profile_data.name}</li>
+                    <li><strong>Title:</strong> ${data.profile_data.title}</li>
+                    <li><strong>Company:</strong> ${data.profile_data.company}</li>
+                    <li><strong>Location:</strong> ${data.profile_data.location}</li>
+                    <li><strong>Skills:</strong> ${data.profile_data.skills.join(', ')}</li>
+                </ul>
+                
+                <h4>🎯 Recommended Questions for You:</h4>
+                <ul>
+                    ${data.suggestions.recommended_questions.map(q => `<li>${q}</li>`).join('')}
+                </ul>
+                
+                <h4>💡 Skill Development Areas:</h4>
+                <p>Consider developing: <strong>${data.suggestions.skill_gaps.join(', ')}</strong></p>
+                
+                <h4>🚀 Career Path Suggestion:</h4>
+                <p>${data.suggestions.career_path}</p>
+                
+                <p><em>Your preferences have been automatically updated based on your LinkedIn profile!</em></p>
+            `;
+            
+            addAssistantMessage(welcomeMessage);
+            
+            // Update recommendations
+            loadRecommendations();
+            
+        } else {
+            addAssistantMessage('Error connecting LinkedIn profile. Please try again.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        addAssistantMessage('Error connecting LinkedIn profile. Please try again.');
+    });
+}
+
+function updateUserPreferencesFromLinkedIn(preferences) {
+    // Update current filters with LinkedIn data
+    currentFilters = {
+        interests: preferences.interests || currentFilters.interests,
+        careerLevel: preferences.career_level || currentFilters.careerLevel,
+        goal: preferences.goal || currentFilters.goal,
+        industry: preferences.industry || currentFilters.industry,
+        location: preferences.location || currentFilters.location,
+        experience: preferences.experience || currentFilters.experience,
+        linkedinConnected: true
+    };
+    
+    // Update UI elements
+    updateInterestTags();
+    updateActiveFilters();
+    
+    // Update form elements
+    updateFormElements(preferences);
+}
+
+function updateFormElements(preferences) {
+    // Update career level checkboxes
+    if (preferences.career_level) {
+        document.querySelectorAll('input[name="career-level"]').forEach(cb => {
+            cb.checked = cb.parentElement.textContent.trim().includes(preferences.career_level);
+        });
+    }
+    
+    // Update goal radio buttons
+    if (preferences.goal) {
+        const goalRadio = document.querySelector(`input[name="goal"][value="${preferences.goal}"]`);
+        if (goalRadio) goalRadio.checked = true;
+    }
+    
+    // Update location select
+    if (preferences.location) {
+        const locationSelect = document.querySelector('select');
+        if (locationSelect) {
+            Array.from(locationSelect.options).forEach(option => {
+                if (option.text.includes(preferences.location)) {
+                    locationSelect.value = option.value;
+                }
+            });
+        }
+    }
+}
+
 // CV Upload with Flask Backend
 function uploadCV() {
     // Create file input element
