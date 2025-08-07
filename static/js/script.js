@@ -19,6 +19,9 @@ function initializeApp() {
     setupEventListeners();
     updateActiveFilters();
     loadRecommendations();
+    
+    // Show default recommendations for users with default preferences
+    showDefaultRecommendations();
 }
 
 // Event Listeners Setup
@@ -222,7 +225,7 @@ function addAssistantMessage(message, isTyping = false) {
         <div class="message-content">
             <i class="fas fa-robot"></i>
             <div>
-                ${isTyping ? typingIndicator : `<p>${message}</p>`}
+                ${isTyping ? typingIndicator : `<div class="message-text">${message}</div>`}
             </div>
         </div>
     `;
@@ -238,14 +241,15 @@ function processQuestionWithBackend(question) {
     // Show typing indicator
     const typingMessage = addAssistantMessage('', true);
     
-    // Send request to Flask backend
+    // Send request to Flask backend with user preferences
     fetch('/api/chat', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            message: question
+            message: question,
+            preferences: currentFilters
         })
     })
     .then(response => response.json())
@@ -255,6 +259,9 @@ function processQuestionWithBackend(question) {
         
         // Add assistant response
         addAssistantMessage(data.response);
+        
+        // Show recommendations section
+        document.getElementById('recommendationsSection').style.display = 'block';
         
         // Update recommendations based on the question
         updateRecommendationsBasedOnQuestion(question);
@@ -301,7 +308,8 @@ function updateRecommendationsFromBackend(recommendations) {
             type: course.type,
             icon: 'fas fa-graduation-cap',
             details: [course.duration, course.price, course.format],
-            button: 'Learn More'
+            button: 'Learn More on LinkedIn',
+            link: course.link
         });
     }
     
@@ -314,7 +322,8 @@ function updateRecommendationsFromBackend(recommendations) {
             type: job.type,
             icon: 'fas fa-briefcase',
             details: [job.location, job.salary, job.company],
-            button: 'Apply Now'
+            button: 'Apply on LinkedIn',
+            link: job.link
         });
     }
     
@@ -327,7 +336,8 @@ function updateRecommendationsFromBackend(recommendations) {
             type: event.type,
             icon: 'fas fa-calendar',
             details: [event.date, event.location, event.price],
-            button: 'Register'
+            button: 'Register on LinkedIn',
+            link: event.link
         });
     }
     
@@ -340,7 +350,8 @@ function updateRecommendationsFromBackend(recommendations) {
             type: workshop.type,
             icon: 'fas fa-tools',
             details: [workshop.duration, workshop.price, workshop.spots],
-            button: 'Join Workshop'
+            button: 'Join on LinkedIn',
+            link: workshop.link
         });
     }
 }
@@ -349,27 +360,175 @@ function updateRecommendationsBasedOnQuestion(question) {
     const lowerQuestion = question.toLowerCase();
     const cards = document.querySelectorAll('.card');
     
+    // Career Advancement - Focus on skill development and leadership training
     if (lowerQuestion.includes('advance') || lowerQuestion.includes('lead')) {
-        // Update cards for career advancement
         updateCard(cards[0], {
-            title: 'Advanced Leadership Program',
-            description: 'Comprehensive program for senior professionals transitioning to leadership roles',
+            title: 'LinkedIn Learning: Becoming a Tech Lead',
+            description: 'Comprehensive course series for advancing to Tech Lead position',
             type: 'COURSE',
             icon: 'fas fa-graduation-cap',
-            details: ['12 weeks', 'Free', 'Online'],
-            button: 'Enroll Now'
+            details: ['12 hours', 'Free with LinkedIn Premium', 'Online'],
+            button: 'Learn More on LinkedIn',
+            link: 'https://www.linkedin.com/learning/paths/becoming-a-tech-lead'
+        });
+        
+        updateCard(cards[1], {
+            title: 'Senior Trainee Program - Tech Leadership',
+            description: 'Structured program for senior developers transitioning to leadership',
+            type: 'JOB',
+            icon: 'fas fa-briefcase',
+            details: ['Remote', 'Training + Salary', 'TechCorp'],
+            button: 'Apply on LinkedIn',
+            link: 'https://www.linkedin.com/jobs/search/?keywords=senior%20trainee%20tech%20lead'
+        });
+        
+        updateCard(cards[2], {
+            title: 'Tech Leadership Practice Group',
+            description: 'Join a community of aspiring tech leaders for practice and mentorship',
+            type: 'EVENT',
+            icon: 'fas fa-calendar',
+            details: ['Weekly', 'Virtual Practice Sessions', 'Free'],
+            button: 'Join on LinkedIn',
+            link: 'https://www.linkedin.com/groups/tech-leadership-practice'
+        });
+        
+        updateCard(cards[3], {
+            title: 'LinkedIn Learning: Executive Leadership Program',
+            description: 'Advanced leadership skills for senior professionals',
+            type: 'WORKSHOP',
+            icon: 'fas fa-tools',
+            details: ['16 weeks', 'Free with LinkedIn Premium', 'Online'],
+            button: 'Join on LinkedIn',
+            link: 'https://www.linkedin.com/learning/paths/executive-leadership-program'
         });
     }
     
-    if (lowerQuestion.includes('job') || lowerQuestion.includes('opportunity')) {
-        // Update cards for job search
+    // Director Skills - Focus on executive development and strategic training
+    if (lowerQuestion.includes('director') || lowerQuestion.includes('executive')) {
+        updateCard(cards[0], {
+            title: 'LinkedIn Learning: Executive Leadership Program',
+            description: 'Advanced leadership skills for senior professionals',
+            type: 'COURSE',
+            icon: 'fas fa-graduation-cap',
+            details: ['16 weeks', 'Free with LinkedIn Premium', 'Online'],
+            button: 'Learn More on LinkedIn',
+            link: 'https://www.linkedin.com/learning/paths/executive-leadership-program'
+        });
+        
         updateCard(cards[1], {
-            title: 'Senior Software Engineer - Remote',
-            description: 'Leading development team in innovative fintech company',
+            title: 'Executive Trainee Program',
+            description: 'Structured program for mid-level managers transitioning to executive roles',
             type: 'JOB',
             icon: 'fas fa-briefcase',
-            details: ['Remote', '$130k-160k', 'FinTech Corp'],
-            button: 'Apply Now'
+            details: ['Hybrid', 'Executive Training', 'Fortune 500'],
+            button: 'Apply on LinkedIn',
+            link: 'https://www.linkedin.com/jobs/search/?keywords=executive%20trainee%20program'
+        });
+        
+        updateCard(cards[2], {
+            title: 'Executive Leadership Practice Forum',
+            description: 'Monthly practice sessions with current executives and board members',
+            type: 'EVENT',
+            icon: 'fas fa-calendar',
+            details: ['Monthly', 'Virtual Executive Sessions', 'Premium'],
+            button: 'Register on LinkedIn',
+            link: 'https://www.linkedin.com/events/executive-leadership-forum'
+        });
+        
+        updateCard(cards[3], {
+            title: 'Strategic Leadership Workshop',
+            description: 'Intensive workshop for developing strategic thinking and executive presence',
+            type: 'WORKSHOP',
+            icon: 'fas fa-tools',
+            details: ['3 days', 'Executive Coaching', 'In-Person'],
+            button: 'Join on LinkedIn',
+            link: 'https://www.linkedin.com/learning/courses/strategic-leadership-workshop'
+        });
+    }
+    
+    // Job Search - Focus on actual job opportunities and networking events
+    if (lowerQuestion.includes('job') || lowerQuestion.includes('opportunity') || lowerQuestion.includes('remote')) {
+        updateCard(cards[0], {
+            title: 'LinkedIn Job Search Mastery Course',
+            description: 'Learn effective job search strategies and LinkedIn optimization',
+            type: 'COURSE',
+            icon: 'fas fa-graduation-cap',
+            details: ['4 hours', 'Free with LinkedIn Premium', 'Online'],
+            button: 'Learn More on LinkedIn',
+            link: 'https://www.linkedin.com/learning/courses/job-search-mastery'
+        });
+        
+        updateCard(cards[1], {
+            title: 'Senior Tech Lead - Remote',
+            description: 'Leading development team in innovative tech company',
+            type: 'JOB',
+            icon: 'fas fa-briefcase',
+            details: ['Remote', '$140k-180k', 'TechCorp'],
+            button: 'Apply on LinkedIn',
+            link: 'https://www.linkedin.com/jobs/search/?keywords=tech%20lead%20remote'
+        });
+        
+        updateCard(cards[2], {
+            title: 'Tech Jobs Fair 2025',
+            description: 'Virtual job fair with top tech companies hiring remote positions',
+            type: 'EVENT',
+            icon: 'fas fa-calendar',
+            details: ['Dec 20, 2025', 'Virtual Job Fair', 'Free'],
+            button: 'Register on LinkedIn',
+            link: 'https://www.linkedin.com/company/tech-jobs-fair/'
+        });
+        
+        updateCard(cards[3], {
+            title: 'LinkedIn Networking Workshop',
+            description: 'Learn how to network effectively on LinkedIn for job opportunities',
+            type: 'WORKSHOP',
+            icon: 'fas fa-tools',
+            details: ['2 hours', 'Networking Skills', 'Virtual'],
+            button: 'Join on LinkedIn',
+            link: 'https://www.linkedin.com/learning/courses/linkedin-networking-workshop'
+        });
+    }
+    
+    // Leadership Workshops - Focus on learning events and skill development
+    if (lowerQuestion.includes('workshop') || lowerQuestion.includes('leadership') || lowerQuestion.includes('skill')) {
+        updateCard(cards[0], {
+            title: 'LinkedIn Learning: Tech Leadership Course Series',
+            description: 'Comprehensive leadership development for tech professionals',
+            type: 'COURSE',
+            icon: 'fas fa-graduation-cap',
+            details: ['20 hours', 'Free with LinkedIn Premium', 'Online'],
+            button: 'Learn More on LinkedIn',
+            link: 'https://www.linkedin.com/learning/paths/tech-leadership-course-series'
+        });
+        
+        updateCard(cards[1], {
+            title: 'Leadership Practice Group',
+            description: 'Join a community for practicing leadership skills and scenarios',
+            type: 'JOB',
+            icon: 'fas fa-briefcase',
+            details: ['Virtual', 'Practice Sessions', 'Community'],
+            button: 'Join on LinkedIn',
+            link: 'https://www.linkedin.com/groups/leadership-practice-group'
+        });
+        
+        updateCard(cards[2], {
+            title: 'Leadership Learning Events Series',
+            description: 'Monthly events featuring leadership experts and interactive workshops',
+            type: 'EVENT',
+            icon: 'fas fa-calendar',
+            details: ['Monthly', 'Virtual Learning Events', 'Free'],
+            button: 'Register on LinkedIn',
+            link: 'https://www.linkedin.com/events/leadership-learning-series'
+        });
+        
+        updateCard(cards[3], {
+            title: 'LinkedIn Leadership Development Workshop',
+            description: 'Interactive workshop for developing leadership skills',
+            type: 'WORKSHOP',
+            icon: 'fas fa-tools',
+            details: ['8 hours', 'Free with LinkedIn Premium', 'Unlimited'],
+            button: 'Join on LinkedIn',
+            link: 'https://www.linkedin.com/learning/courses/leadership-development-workshop'
         });
     }
 }
@@ -389,7 +548,16 @@ function updateCard(card, data) {
     
     if (title) title.textContent = data.title;
     if (description) description.textContent = data.description;
-    if (button) button.textContent = data.button;
+    
+    // Update button with LinkedIn link if available
+    if (button) {
+        button.textContent = data.button;
+        if (data.link) {
+            button.onclick = function() {
+                window.open(data.link, '_blank');
+            };
+        }
+    }
     
     if (details && data.details) {
         details.innerHTML = data.details.map(detail => 
@@ -405,12 +573,13 @@ function updateRecommendationsBasedOnFilters() {
     if (currentFilters.goal === 'advancement') {
         // Show advancement-focused recommendations
         updateCard(cards[0], {
-            title: 'Executive Leadership Program',
+            title: 'LinkedIn Learning: Executive Leadership Program',
             description: 'Advanced leadership skills for senior professionals',
             type: 'COURSE',
             icon: 'fas fa-graduation-cap',
-            details: ['16 weeks', '$2,500', 'Hybrid'],
-            button: 'Learn More'
+            details: ['16 weeks', 'Free with LinkedIn Premium', 'Online'],
+            button: 'Learn More on LinkedIn',
+            link: 'https://www.linkedin.com/learning/paths/executive-leadership-program'
         });
     }
     
@@ -422,8 +591,136 @@ function updateRecommendationsBasedOnFilters() {
             type: 'JOB',
             icon: 'fas fa-briefcase',
             details: ['Remote', '$140k-180k', 'TechCorp'],
-            button: 'Apply Now'
+            button: 'Apply on LinkedIn',
+            link: 'https://www.linkedin.com/jobs/search/?keywords=tech%20lead%20remote'
         });
+    }
+}
+
+// LinkedIn Connection
+function connectLinkedIn() {
+    // Prompt user for LinkedIn URL
+    const linkedinUrl = prompt('Please enter your LinkedIn profile URL:', 'https://www.linkedin.com/in/');
+    
+    if (linkedinUrl && linkedinUrl.trim() !== '') {
+        connectLinkedInToBackend(linkedinUrl.trim());
+    }
+}
+
+function connectLinkedInToBackend(linkedinUrl) {
+    // Show loading message
+    addAssistantMessage('Connecting to your LinkedIn profile...', true);
+    
+    fetch('/api/connect-linkedin', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            linkedin_url: linkedinUrl
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Remove loading message
+            const messages = document.querySelectorAll('.message.assistant');
+            const lastMessage = messages[messages.length - 1];
+            if (lastMessage) {
+                lastMessage.remove();
+            }
+            
+            // Update user preferences
+            updateUserPreferencesFromLinkedIn(data.updated_preferences);
+            
+            // Show personalized welcome message
+            const welcomeMessage = `
+                <h3>🎉 LinkedIn Profile Connected!</h3>
+                <p><strong>${data.suggestions.welcome_message}</strong></p>
+                <p>${data.suggestions.profile_summary}</p>
+                
+                <h4>📊 Your Profile Analysis:</h4>
+                <ul>
+                    <li><strong>Name:</strong> ${data.profile_data.name}</li>
+                    <li><strong>Title:</strong> ${data.profile_data.title}</li>
+                    <li><strong>Company:</strong> ${data.profile_data.company}</li>
+                    <li><strong>Location:</strong> ${data.profile_data.location}</li>
+                    <li><strong>Skills:</strong> ${data.profile_data.skills.join(', ')}</li>
+                </ul>
+                
+                <h4>🎯 Recommended Questions for You:</h4>
+                <ul>
+                    ${data.suggestions.recommended_questions.map(q => `<li>${q}</li>`).join('')}
+                </ul>
+                
+                <h4>💡 Skill Development Areas:</h4>
+                <p>Consider developing: <strong>${data.suggestions.skill_gaps.join(', ')}</strong></p>
+                
+                <h4>🚀 Career Path Suggestion:</h4>
+                <p>${data.suggestions.career_path}</p>
+                
+                <p><em>Your preferences have been automatically updated based on your LinkedIn profile!</em></p>
+            `;
+            
+            addAssistantMessage(welcomeMessage);
+            
+            // Update recommendations
+            loadRecommendations();
+            
+        } else {
+            addAssistantMessage('Error connecting LinkedIn profile. Please try again.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        addAssistantMessage('Error connecting LinkedIn profile. Please try again.');
+    });
+}
+
+function updateUserPreferencesFromLinkedIn(preferences) {
+    // Update current filters with LinkedIn data
+    currentFilters = {
+        interests: preferences.interests || currentFilters.interests,
+        careerLevel: preferences.career_level || currentFilters.careerLevel,
+        goal: preferences.goal || currentFilters.goal,
+        industry: preferences.industry || currentFilters.industry,
+        location: preferences.location || currentFilters.location,
+        experience: preferences.experience || currentFilters.experience,
+        linkedinConnected: true
+    };
+    
+    // Update UI elements
+    updateInterestTags();
+    updateActiveFilters();
+    
+    // Update form elements
+    updateFormElements(preferences);
+}
+
+function updateFormElements(preferences) {
+    // Update career level checkboxes
+    if (preferences.career_level) {
+        document.querySelectorAll('input[name="career-level"]').forEach(cb => {
+            cb.checked = cb.parentElement.textContent.trim().includes(preferences.career_level);
+        });
+    }
+    
+    // Update goal radio buttons
+    if (preferences.goal) {
+        const goalRadio = document.querySelector(`input[name="goal"][value="${preferences.goal}"]`);
+        if (goalRadio) goalRadio.checked = true;
+    }
+    
+    // Update location select
+    if (preferences.location) {
+        const locationSelect = document.querySelector('select');
+        if (locationSelect) {
+            Array.from(locationSelect.options).forEach(option => {
+                if (option.text.includes(preferences.location)) {
+                    locationSelect.value = option.value;
+                }
+            });
+        }
     }
 }
 
@@ -527,4 +824,96 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function showRecommendationPrompt(title) {
     addAssistantMessage(`Would you like more details about "${title}"?`);
+}
+
+function showDefaultRecommendations() {
+    // Check if user has default preferences
+    const isDefault = isDefaultPreferences(currentFilters);
+    
+    if (isDefault) {
+        // Show recommendations section
+        document.getElementById('recommendationsSection').style.display = 'block';
+        
+        // Update cards with default LinkedIn-focused recommendations
+        updateDefaultRecommendationCards();
+    }
+}
+
+function isDefaultPreferences(preferences) {
+    const defaultPrefs = {
+        interests: ['Technology', 'Leadership'],
+        career_level: 'Entry Level',
+        goal: 'advancement',
+        industry: 'All Industries',
+        location: 'Remote',
+        experience: '3-5 years'
+    };
+    
+    for (let key in defaultPrefs) {
+        if (preferences[key]) {
+            if (Array.isArray(defaultPrefs[key])) {
+                if (!arraysEqual(preferences[key], defaultPrefs[key])) {
+                    return false;
+                }
+            } else {
+                if (preferences[key] !== defaultPrefs[key]) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+function arraysEqual(a, b) {
+    if (a.length !== b.length) return false;
+    return a.every((val, index) => val === b[index]);
+}
+
+function updateDefaultRecommendationCards() {
+    const cards = document.querySelectorAll('.card');
+    
+    // Default recommendations focused on career advancement (since that's the default goal)
+    updateCard(cards[0], {
+        title: 'LinkedIn Learning: Becoming a Tech Lead',
+        description: 'Comprehensive course series for advancing to Tech Lead position',
+        type: 'COURSE',
+        icon: 'fas fa-graduation-cap',
+        details: ['12 hours', 'Free with LinkedIn Premium', 'Online'],
+        button: 'Learn More on LinkedIn',
+        link: 'https://www.linkedin.com/learning/paths/becoming-a-tech-lead'
+    });
+    
+    // Senior trainee program for skill development
+    updateCard(cards[1], {
+        title: 'Senior Trainee Program - Tech Leadership',
+        description: 'Structured program for senior developers transitioning to leadership',
+        type: 'JOB',
+        icon: 'fas fa-briefcase',
+        details: ['Remote', 'Training + Salary', 'TechCorp'],
+        button: 'Apply on LinkedIn',
+        link: 'https://www.linkedin.com/jobs/search/?keywords=senior%20trainee%20tech%20lead'
+    });
+    
+    // Practice group for skill development
+    updateCard(cards[2], {
+        title: 'Tech Leadership Practice Group',
+        description: 'Join a community of aspiring tech leaders for practice and mentorship',
+        type: 'EVENT',
+        icon: 'fas fa-calendar',
+        details: ['Weekly', 'Virtual Practice Sessions', 'Free'],
+        button: 'Join on LinkedIn',
+        link: 'https://www.linkedin.com/groups/tech-leadership-practice'
+    });
+    
+    // Executive leadership program for advancement
+    updateCard(cards[3], {
+        title: 'LinkedIn Learning: Executive Leadership Program',
+        description: 'Advanced leadership skills for senior professionals',
+        type: 'WORKSHOP',
+        icon: 'fas fa-tools',
+        details: ['16 weeks', 'Free with LinkedIn Premium', 'Online'],
+        button: 'Join on LinkedIn',
+        link: 'https://www.linkedin.com/learning/paths/executive-leadership-program'
+    });
 }

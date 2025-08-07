@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, jsonify
 import os
 import logging
+from predefined_responses import predefined_manager
+from linkedin_profile_analyzer import linkedin_analyzer
 
 app = Flask(__name__)
 
@@ -26,8 +28,18 @@ def chat():
     
     app.logger.info(f'Chat request received: {user_message[:50]}...')
     
-    # Simple response logic - in a real app, this would connect to an AI service
-    response = generate_chat_response(user_message)
+    # Get user preferences from request (default to default preferences)
+    user_preferences = data.get('preferences', {
+        'interests': ['Technology', 'Leadership'],
+        'career_level': 'Entry Level',
+        'goal': 'advancement',
+        'industry': 'All Industries',
+        'location': 'Remote',
+        'experience': '3-5 years'
+    })
+    
+    # Use predefined responses if applicable
+    response = predefined_manager.get_response(user_message, user_preferences)
     
     app.logger.info('Chat response generated successfully')
     
@@ -81,6 +93,45 @@ def upload_cv():
         'analysis': analysis_result,
         'status': 'success'
     })
+
+@app.route('/api/connect-linkedin', methods=['POST'])
+def connect_linkedin():
+    """API endpoint for LinkedIn profile connection"""
+    data = request.get_json()
+    linkedin_url = data.get('linkedin_url', '')
+    
+    if not linkedin_url:
+        app.logger.warning('LinkedIn connection attempted without URL')
+        return jsonify({'error': 'No LinkedIn URL provided'}), 400
+    
+    app.logger.info(f'LinkedIn profile connection requested: {linkedin_url}')
+    
+    try:
+        # Analyze the LinkedIn profile
+        profile_data = linkedin_analyzer.analyze_profile(linkedin_url)
+        
+        if not profile_data:
+            return jsonify({'error': 'Could not analyze LinkedIn profile'}), 400
+        
+        # Update user preferences based on profile
+        updated_preferences = linkedin_analyzer.update_user_preferences(profile_data)
+        
+        # Get personalized suggestions
+        suggestions = linkedin_analyzer.get_personalized_suggestions(profile_data)
+        
+        app.logger.info(f'LinkedIn profile connected successfully: {profile_data.get("name", "Unknown")}')
+        
+        return jsonify({
+            'message': f'LinkedIn profile connected successfully!',
+            'profile_data': profile_data,
+            'updated_preferences': updated_preferences,
+            'suggestions': suggestions,
+            'status': 'success'
+        })
+        
+    except Exception as e:
+        app.logger.error(f'Error connecting LinkedIn profile: {e}')
+        return jsonify({'error': 'Error connecting LinkedIn profile'}), 500
 
 def generate_chat_response(user_message):
     """Generate chat responses based on user input"""
@@ -139,45 +190,173 @@ def generate_recommendations(career_level, interests, goal):
         'workshops': []
     }
     
-    # Course recommendations
+    # Contextual recommendations based on goal
     if goal == 'advancement':
+        # Focus on skill development and training programs
         recommendations['courses'].append({
-            'title': 'Leadership Skills for Tech Professionals',
-            'description': 'Develop essential leadership skills to advance your career',
-            'duration': '8 weeks',
-            'price': 'Free',
+            'title': 'LinkedIn Learning: Becoming a Tech Lead',
+            'description': 'Comprehensive course series for advancing to Tech Lead position',
+            'duration': '12 hours',
+            'price': 'Free with LinkedIn Premium',
             'format': 'Online',
-            'type': 'COURSE'
+            'type': 'COURSE',
+            'link': 'https://www.linkedin.com/learning/paths/becoming-a-tech-lead'
+        })
+        
+        recommendations['jobs'].append({
+            'title': 'Senior Trainee Program - Tech Leadership',
+            'description': 'Structured program for senior developers transitioning to leadership',
+            'location': 'Remote',
+            'salary': 'Training + Salary',
+            'company': 'TechCorp',
+            'type': 'JOB',
+            'link': 'https://www.linkedin.com/jobs/search/?keywords=senior%20trainee%20tech%20lead'
+        })
+        
+        recommendations['events'].append({
+            'title': 'Tech Leadership Practice Group',
+            'description': 'Join a community of aspiring tech leaders for practice and mentorship',
+            'date': 'Weekly',
+            'location': 'Virtual Practice Sessions',
+            'price': 'Free',
+            'type': 'EVENT',
+            'link': 'https://www.linkedin.com/groups/tech-leadership-practice'
+        })
+        
+        recommendations['workshops'].append({
+            'title': 'LinkedIn Learning: Executive Leadership Program',
+            'description': 'Advanced leadership skills for senior professionals',
+            'duration': '16 weeks',
+            'price': 'Free with LinkedIn Premium',
+            'spots': 'Unlimited',
+            'type': 'WORKSHOP',
+            'link': 'https://www.linkedin.com/learning/paths/executive-leadership-program'
         })
     
-    if 'Technology' in interests:
+    elif goal == 'skill':
+        # Focus on learning events and skill development
+        recommendations['courses'].append({
+            'title': 'LinkedIn Learning: Tech Leadership Course Series',
+            'description': 'Comprehensive leadership development for tech professionals',
+            'duration': '20 hours',
+            'price': 'Free with LinkedIn Premium',
+            'format': 'Online',
+            'type': 'COURSE',
+            'link': 'https://www.linkedin.com/learning/paths/tech-leadership-course-series'
+        })
+        
+        recommendations['jobs'].append({
+            'title': 'Leadership Practice Group',
+            'description': 'Join a community for practicing leadership skills and scenarios',
+            'location': 'Virtual',
+            'salary': 'Practice Sessions',
+            'company': 'Community',
+            'type': 'JOB',
+            'link': 'https://www.linkedin.com/groups/leadership-practice-group'
+        })
+        
+        recommendations['events'].append({
+            'title': 'Leadership Learning Events Series',
+            'description': 'Monthly events featuring leadership experts and interactive workshops',
+            'date': 'Monthly',
+            'location': 'Virtual Learning Events',
+            'price': 'Free',
+            'type': 'EVENT',
+            'link': 'https://www.linkedin.com/events/leadership-learning-series'
+        })
+        
+        recommendations['workshops'].append({
+            'title': 'LinkedIn Leadership Development Workshop',
+            'description': 'Interactive workshop for developing leadership skills',
+            'duration': '8 hours',
+            'price': 'Free with LinkedIn Premium',
+            'spots': 'Unlimited',
+            'type': 'WORKSHOP',
+            'link': 'https://www.linkedin.com/learning/courses/leadership-development-workshop'
+        })
+    
+    elif goal == 'job':
+        # Focus on job opportunities and networking events
+        recommendations['courses'].append({
+            'title': 'LinkedIn Job Search Mastery Course',
+            'description': 'Learn effective job search strategies and LinkedIn optimization',
+            'duration': '4 hours',
+            'price': 'Free with LinkedIn Premium',
+            'format': 'Online',
+            'type': 'COURSE',
+            'link': 'https://www.linkedin.com/learning/courses/job-search-mastery'
+        })
+        
+        recommendations['jobs'].append({
+            'title': 'Senior Tech Lead - Remote',
+            'description': 'Leading development team in innovative tech company',
+            'location': 'Remote',
+            'salary': '$140k-180k',
+            'company': 'TechCorp',
+            'type': 'JOB',
+            'link': 'https://www.linkedin.com/jobs/search/?keywords=tech%20lead%20remote'
+        })
+        
+        recommendations['events'].append({
+            'title': 'Tech Jobs Fair 2025',
+            'description': 'Virtual job fair with top tech companies hiring remote positions',
+            'date': 'Dec 20, 2025',
+            'location': 'Virtual Job Fair',
+            'price': 'Free',
+            'type': 'EVENT',
+            'link': 'https://www.linkedin.com/company/tech-jobs-fair/'
+        })
+        
+        recommendations['workshops'].append({
+            'title': 'LinkedIn Networking Workshop',
+            'description': 'Learn how to network effectively on LinkedIn for job opportunities',
+            'duration': '2 hours',
+            'price': 'Networking Skills',
+            'spots': 'Virtual',
+            'type': 'WORKSHOP',
+            'link': 'https://www.linkedin.com/learning/courses/linkedin-networking-workshop'
+        })
+    
+    else:
+        # Default recommendations for other goals
+        recommendations['courses'].append({
+            'title': 'LinkedIn Learning: Becoming a Tech Lead',
+            'description': 'Comprehensive course series for advancing to Tech Lead position',
+            'duration': '12 hours',
+            'price': 'Free with LinkedIn Premium',
+            'format': 'Online',
+            'type': 'COURSE',
+            'link': 'https://www.linkedin.com/learning/paths/becoming-a-tech-lead'
+        })
+        
         recommendations['jobs'].append({
             'title': 'Senior Tech Lead - Remote',
             'description': 'Leading development team in innovative tech company',
             'location': 'Remote',
             'salary': '$120k-150k',
             'company': 'TechCorp',
-            'type': 'JOB'
+            'type': 'JOB',
+            'link': 'https://www.linkedin.com/jobs/search/?keywords=senior%20tech%20lead%20remote'
         })
     
-    # Event recommendations
     recommendations['events'].append({
-        'title': 'Tech Leadership Summit 2024',
-        'description': 'Network with industry leaders and learn best practices',
-        'date': 'Dec 15, 2024',
-        'location': 'Helsinki',
-        'price': '$299',
-        'type': 'EVENT'
-    })
-    
-    # Workshop recommendations
+            'title': 'LinkedIn Tech Leadership Summit 2025',
+            'description': 'Virtual conference with industry leaders and networking opportunities',
+            'date': 'Dec 15, 2025',
+            'location': 'Virtual (LinkedIn Events)',
+            'price': 'Free',
+            'type': 'EVENT',
+            'link': 'https://www.linkedin.com/events/tech-leadership-summit-2025'
+        })
+        
     recommendations['workshops'].append({
-        'title': 'Strategic Thinking Workshop',
+            'title': 'LinkedIn Learning: Strategic Thinking Workshop',
         'description': 'Develop strategic thinking skills for executive roles',
-        'duration': '2 days',
-        'price': '$150',
-        'spots': '15 spots left',
-        'type': 'WORKSHOP'
+            'duration': '6 hours',
+            'price': 'Free with LinkedIn Premium',
+            'spots': 'Unlimited',
+            'type': 'WORKSHOP',
+            'link': 'https://www.linkedin.com/learning/courses/strategic-thinking-for-leaders'
     })
     
     return recommendations
